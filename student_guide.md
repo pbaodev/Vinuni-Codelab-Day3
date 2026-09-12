@@ -7,15 +7,21 @@
 
 ## 🧭 Hướng Dẫn Thực Hiện 4 Milestones
 
+**Cập nhật cho thư mục này:** Code đã được hoàn thiện. Đây là mô phỏng ReAct
+bằng luật Python với dữ liệu JSON tĩnh. `SYSTEM_PROMPT` chưa được gửi tới LLM;
+`thought` là mô tả ngắn do code tạo ra. Xem `starter-code/README.md` để chạy
+và đọc giải thích bản hoàn thiện. Giá vé, thời tiết và FAQ là dữ liệu minh họa.
+
 ### 1. Milestone 1: Khởi Tạo Chatbot Baseline
 Mở file `starter-code/template.py` và quan sát class `ChatbotBaseline`:
 ```python
 class ChatbotBaseline:
-    def query(self, user_input: str) -> str:
-        # TODO: Trả về câu trả lời không dùng tool
+    def query(self, user_input: str) -> dict:
+        # Trả về answer, tool_calls, status, mode; không gọi tool.
+        ...
 ```
 * **Mục tiêu:** Hãy chạy phương thức `query()` với câu hỏi: `"Tìm chuyến bay từ HAN đi SGN dưới 2 triệu, và thời tiết SGN nên mặc gì?"`.
-* **Quan sát:** Chatbot sẽ bịa ra thông tin chuyến bay hoặc từ chối tra cứu vì không có kết nối cơ sở dữ liệu.
+* **Quan sát:** Ở chế độ `mock_baseline`, chatbot trả lời chung chung và có `tool_calls = []`; không đọc dữ liệu chuyến bay/thời tiết.
 
 ---
 
@@ -64,14 +70,9 @@ Trong mỗi bước lặp:
 
 ### 4. Milestone 4: Safegaurds & Trace Logging
 Để phòng ngừa sự cố lặp vô tận, luôn kiểm tra điều kiện ngắt:
-```python
-if iteration >= self.max_iterations:
-    return {
-        "status": "max_iterations_reached",
-        "answer": "Không thể hoàn thành trong số bước tối đa.",
-        "trace": self.trace
-    }
-```
+`run()` chỉ lặp khi `iteration <= self.max_iterations`. Nếu lượt cuối chưa có
+câu trả lời, trả `max_iterations_reached`; nếu hoàn thành ngay tại lượt cuối
+thì vẫn trả `completed`. Mỗi lần thử lại tool cũng tính một lượt.
 
 ---
 
@@ -87,7 +88,7 @@ if iteration >= self.max_iterations:
 
 3. **Trap 3: Lặp vô tận khi API lỗi**
    * *Nguyên nhân:* Tool trả về dictionary chứa lỗi `{"error": "City not found"}`, Agent không biết dừng mà liên tục gọi lại.
-   * *Cách khắc phục:* Giới hạn `max_iterations = 5` và hướng dẫn System Prompt nếu gặp lỗi 2 lần thì đưa ra Final Answer báo lỗi cho khách hàng.
+   * *Cách khắc phục:* Giới hạn `max_iterations = 5`; code đếm lỗi liên tiếp và dừng sau 2 lần với `tool_error`, ghi câu trả lời báo lỗi vào trace.
 
 ---
 
@@ -95,7 +96,15 @@ if iteration >= self.max_iterations:
 
 Sau khi hoàn thành `template.py`, chạy lệnh pytest tại thư mục gốc dự án:
 ```bash
-python3 -m pytest Day03-Chatbot-vs-ReAct-Agent/02-lab/autograder/test_agent.py -v
+source .venv/bin/activate
+env -u GEMINI_API_KEY python -m pytest autograder/test_agent.py -v
 ```
 
-Nếu 5/5 test cases báo `PASSED`, chúc mừng bạn đã hoàn thành xuất sắc Lab #3!
+Bộ chấm gốc có **8 test**. Chạy cả kiểm thử bổ sung bằng:
+
+```bash
+env -u GEMINI_API_KEY python -m pytest autograder -v
+```
+
+Kết quả đã kiểm tra: **24 passed**. `raw-data/customer_queries.json` có 5 câu
+hỏi demo; đây không phải số test của bộ chấm.
